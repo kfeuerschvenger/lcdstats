@@ -14,7 +14,6 @@ SCREEN_HEIGHT = 128
 SCREEN_ROTATE = 0
 
 LOOPTIME = 0.05
-STARTING_SCREEN = 0
 
 # --- Check if Raspberry Pi ---
 is_raspberry = platform.system() == "Linux" and os.uname().machine.startswith('arm')
@@ -39,11 +38,6 @@ def setup_device():
         device = FakeDisplay(SCREEN_WIDTH, SCREEN_HEIGHT, root)
     return device
 
-def change_screen(current_screen):
-    if input_handler_instance.was_button_pressed():
-        current_screen = (current_screen + 1) % len(screens)
-    return current_screen
-
 # Create a blank image for drawing
 image = Image.new('RGB', (SCREEN_WIDTH, SCREEN_HEIGHT), (0, 0, 0))
 # Get drawing object to draw on image
@@ -51,12 +45,11 @@ draw = ImageDraw.Draw(image)
 
 # --- Main Render Function ---
 def main_loop(device):
-    current_screen = STARTING_SCREEN
     last_time = time.time()
     
-    screens[current_screen].init(is_raspberry, SCREEN_WIDTH, SCREEN_HEIGHT)
-    screens[current_screen].update(0)
-    screens[current_screen].draw(draw, image)
+    manager.screens[manager.current_index].init(is_raspberry, SCREEN_WIDTH, SCREEN_HEIGHT)
+    manager.screens[manager.current_index].update(0)
+    manager.screens[manager.current_index].draw(draw, image)
 
     while True:
         current_time = time.time()
