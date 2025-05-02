@@ -15,9 +15,13 @@ class SecondaryScreen(Screen):
         self.frames = []
         self.durations = []
         self.current_frame_index = 0
+        self.prev_frame_index = 0
         self.last_frame_time = time.time()
         self.screen_width = 128
         self.screen_height = 128
+
+        self.frame_duration = 0.1 # 100ms per frame
+        self.target_fps = 10      # For GIFs with variable timing
 
         self.load_gif()
 
@@ -28,10 +32,10 @@ class SecondaryScreen(Screen):
                 frame = gif.copy().convert("RGB")
                 resized_frame = frame.resize((self.target_width, self.target_height), Image.NEAREST)
                 self.frames.append(resized_frame)
-                self.durations.append(gif.info.get('duration', 100) / 1000.0)  # en segundos
+                self.durations.append(gif.info.get('duration', 100) / 1000.0) # in seconds
                 gif.seek(gif.tell() + 1)
         except EOFError:
-            pass  # Fin del gif
+            pass  # gif end
 
     def init(self, is_raspberry, screen_width, screen_height):
         self.is_raspberry = is_raspberry
@@ -43,17 +47,16 @@ class SecondaryScreen(Screen):
         frame_duration = self.durations[self.current_frame_index]
 
         if current_time - self.last_frame_time >= frame_duration:
+            self.prev_frame_index = self.current_frame_index
             self.current_frame_index = (self.current_frame_index + 1) % len(self.frames)
             self.last_frame_time = current_time
 
     def draw(self, draw, image):
         frame = self.frames[self.current_frame_index]
+        prev_frame = self.frames[self.prev_frame_index]
 
         x = (self.screen_width - self.target_width) // 2
         y = (self.screen_height - self.target_height) // 2
 
-        # Clear screen before drawing
-        image.paste((0, 0, 0), [0, 0, self.screen_width, self.screen_height])
-
-        # Paste frame
+        image.paste(prev_frame, (x, y), prev_frame.convert("L"))
         image.paste(frame, (x, y))

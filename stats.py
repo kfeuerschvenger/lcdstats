@@ -13,10 +13,14 @@ SCREEN_WIDTH = 128
 SCREEN_HEIGHT = 128
 SCREEN_ROTATE = 0
 
-LOOPTIME = 0.05
+LOOPTIME = 1/30  # 30 FPS max
 
 # --- Check if Raspberry Pi ---
-is_raspberry = platform.system() == "Linux" and os.uname().machine.startswith('arm')
+is_raspberry = platform.system() == "Linux" and (
+    os.uname().machine.startswith('arm') 
+    or os.uname().machine.startswith('aarch')
+    or os.uname().machine.startswith('rpi')
+)
 
 input_handler_instance = input_handler.InputHandler(is_raspberry)
 
@@ -26,11 +30,8 @@ manager = ScreenManager(screens, input_handler_instance)
 # --- Device Setup ---
 def setup_device():
     if is_raspberry:
-        import luma.lcd.device as lcd_device
-        import luma.core.interface.serial as lcd_serial
-        serial = lcd_serial.spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
-        # My LCD DRIVE IC is ILI9163, you may need to change this to ST7735 or whatever you need.
-        device = lcd_device.ili9163(serial_interface=serial, width=SCREEN_WIDTH, height=SCREEN_HEIGHT, rotate=SCREEN_ROTATE, bgr=True)
+        from ILI9163 import ILI9163
+        device = ILI9163()
     else:
         import tkinter as tk
         root = tk.Tk()
@@ -45,16 +46,20 @@ draw = ImageDraw.Draw(image)
 
 # --- Main Render Function ---
 def main_loop(device):
-    last_time = time.time()
-    
-    manager.screens[manager.current_index].init(is_raspberry, SCREEN_WIDTH, SCREEN_HEIGHT)
-    manager.screens[manager.current_index].update(0)
-    manager.screens[manager.current_index].draw(draw, image)
+    last_vsync = time.monotonic()
+    last_frame_time = time.monotonic()
 
     while True:
-        current_time = time.time()
-        delta = current_time - last_time
-        last_time = current_time
+        while (time.monotonic() - last_vsync) < LOOPTIME:
+            time.sleep(0.001)
+        last_vsync = time.monotonic()
+
+        current_time = time.monotonic()
+        delta = current_time - last_frame_time
+        last_frame_time = current_time
+
+        image = Image.new('RGB', (SCREEN_WIDTH, SCREEN_HEIGHT), (0, 0, 0))
+        draw = ImageDraw.Draw(image)
 
         manager.update(delta)
         manager.draw(draw, image)
@@ -63,20 +68,18 @@ def main_loop(device):
         if not is_raspberry:
             device.update()
 
-        time.sleep(LOOPTIME)
-
 # --- Start Program ---
 if __name__ == "__main__":
+    device = None
     try:
         device = setup_device()
         main_loop(device)
     except KeyboardInterrupt:
         pass
     finally:
-        if is_raspberry:
-            import RPi.GPIO as GPIO
-            GPIO.cleanup()
-            device.clear()
-        else:
-            device.clear()
-            device.close()
+        if device:
+            if is_raspberry:
+                device.clear()
+            else:
+                device.clear()
+                device.close()

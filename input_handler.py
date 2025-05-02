@@ -2,6 +2,7 @@ import time
 
 class InputHandler:
     LONG_PRESS_THRESHOLD = 3  # Seconds
+    BUTTON_PIN = 18
     
     def __init__(self, is_raspberry):
         self.is_raspberry = is_raspberry
@@ -9,15 +10,11 @@ class InputHandler:
         self._long_press_detected = False
         self.button_pressed_time = None
         self.is_pressed = False
+        self.button_gpio = None
 
         if self.is_raspberry:
-            import RPi.GPIO as GPIO
-            GPIO.setmode(GPIO.BCM)
-            self.GPIO = GPIO
-            self.BUTTON_PIN = 18
-            self.GPIO.setup(self.BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        else:
-            self.window = None
+            from periphery import GPIO
+            self.button_gpio = GPIO("/dev/gpiochip0", self.BUTTON_PIN, "in", bias="pull_up")
 
     def register_keybinding(self, window):
         if not self.is_raspberry:
@@ -44,9 +41,10 @@ class InputHandler:
                 self.is_pressed = False
 
     def update(self):
-        if self.is_raspberry:
-            button_state = self.GPIO.input(self.BUTTON_PIN)
-            if button_state == self.GPIO.LOW:
+        if self.is_raspberry and self.button_gpio:
+            button_state = self.button_gpio.read()
+            
+            if not button_state:
                 if self.button_pressed_time is None:
                     self.button_pressed_time = time.time()
                 else:
