@@ -15,7 +15,7 @@ DEFAULT_HEIGHT = 128
 COLOR_BLACK = 0x0000
 
 # SPI configuration
-SPI_SPEED_HZ = 32_000_000
+SPI_SPEED_HZ = 30_000_000
 SPI_MODE = 0b11
 
 # Fallback chunk size for SPI transfer
@@ -51,17 +51,34 @@ ROTATION_MADCTL = {
 }
 
 class ILI9163:
-    def __init__(self, spi_bus=0, spi_device=0, dc_pin=25, rst_pin=24, cs_pin=5,
-                 width=DEFAULT_WIDTH, height=DEFAULT_HEIGHT, rotation=180):
+    def __init__(self, spi_bus: int = 0, spi_device: int = 0, dc_pin: int = 25, rst_pin: int = 24, cs_pin: int = 5,
+                 width: int = DEFAULT_WIDTH, height: int = DEFAULT_HEIGHT, rotation: int = 180):
+        """
+        Initialize the display and SPI connection.
+
+        Args:
+            spi_bus (int): SPI bus number.
+            spi_device (int): SPI device number.
+            dc_pin (int): GPIO pin for Data/Command control.
+            rst_pin (int): GPIO pin for hardware reset.
+            cs_pin (int): GPIO pin for Chip Select.
+            width (int): Display width in pixels.
+            height (int): Display height in pixels.
+            rotation (int): Display rotation in degrees (0, 90, 180, 270).
+        """
         self.width = width
         self.height = height
-        self.rotation = rotation % 360
+
+        self.rotation = int(rotation) % 360
+        if int(self.rotation) not in ROTATION_MADCTL:
+            raise ValueError(f"Unsupported rotation: {self.rotation}")
+
         self.dc = GPIO(GPIO_CHIP_PATH, dc_pin, "out")
         self.rst = GPIO(GPIO_CHIP_PATH, rst_pin, "out")
         self.cs = GPIO(GPIO_CHIP_PATH, cs_pin, "out")
         self._setup_spi(spi_bus, spi_device)
-        self.front_buffer = np.zeros((height, width), dtype=np.uint16)
-        self.back_buffer = np.zeros_like(self.front_buffer)
+        self.front_buffer: np.ndarray = np.zeros((height, width), dtype=np.uint16)
+        self.back_buffer: np.ndarray = np.zeros_like(self.front_buffer)
         self._display_ready = False
         self._init_display()
         time.sleep(0.5)
@@ -69,6 +86,7 @@ class ILI9163:
         self.clear()
 
     def _setup_spi(self, bus, device):
+        """Initialize and configure the SPI interface."""
         self.spi = spidev.SpiDev()
         self.spi.open(bus, device)
         self.spi.max_speed_hz = SPI_SPEED_HZ
@@ -77,20 +95,29 @@ class ILI9163:
         self.spi.lsbfirst = False
 
     def _hardware_reset(self):
+        """Perform a hardware reset sequence using the RST GPIO pin."""
         self.rst.write(False)
         time.sleep(0.25)
         self.rst.write(True)
         time.sleep(0.3)
 
     def _write(self, data, is_command=True):
+        """
+        Send a command or data to the display over SPI.
+        
+        Args:
+            data (list[int]): Bytes to send.
+            is_command (bool): True to send a command, False to send data.
+        """
         self.cs.write(False)
         self.dc.write(not is_command)
         self.spi.xfer2(data)
         self.cs.write(True)
 
     def _init_display(self):
+        """Send the initialization sequence to prepare the display."""
         self._hardware_reset()
-        madctl = ROTATION_MADCTL.get(self.rotation, ROTATION_MADCTL[0])
+        madctl = ROTATION_MADCTL.get(self.rotation, ROTATION_MADCTL[180])
 
         init_sequence = [
             (CMD_SWRESET, None, 200),
@@ -117,6 +144,12 @@ class ILI9163:
             time.sleep(delay / 1000)
 
     def _pack_coords(self, start, end):
+        """
+        Convert start and end coordinates into a 4-byte list for commands.
+        
+        Returns:
+            list[int]: High and low bytes of start and end.
+        """
         return [start >> 8, start & 0xFF, end >> 8, end & 0xFF]
 
     def set_window(self, x0=0, y0=0, x1=None, y1=None):
@@ -127,10 +160,21 @@ class ILI9163:
         self._write([CMD_RAMWR], True)
 
     def clear(self, color=COLOR_BLACK):
+        """
+        Fill the screen with a single color.
+
+        Args:
+            color (int): 16-bit RGB565 color value. Defaults to black.
+        """
         self.back_buffer.fill(color)
         self.update()
 
-    def update(self):
+    def update(self) -> None:
+        """
+        Send the front buffer to the display.
+        Swaps front and back buffers before sending.
+        Falls back to chunked transfer if needed.
+        """
         if not self._display_ready:
             return
         self.swap_buffers()
@@ -143,11 +187,14 @@ class ILI9163:
             for i in range(0, len(data), CHUNK_SIZE):
                 self._write(data[i:i+CHUNK_SIZE], is_command=False)
 
-    def display(self, image: Image.Image):
-        img = image.convert('RGB').resize((self.width, self.height))
-        if self.rotation:
-            img = img.rotate(self.rotation, expand=False)
+    def display(self, image: Image.Image) -> None:
+        """
+        Convert a PIL Image to RGB565 format and show it on the screen.
 
+        Args:
+            image (PIL.Image.Image): Input image to display.
+        """
+        img = image.convert('RGB').resize((self.width, self.height))
         arr = np.array(img, dtype=np.uint16)
         r = (arr[:, :, 0] & 0xF8) << 8
         g = (arr[:, :, 1] & 0xFC) << 3
@@ -156,10 +203,21 @@ class ILI9163:
         np.copyto(self.back_buffer, rgb565)
         self.update()
 
-    def rgb_to_565(self, r, g, b):
+    def rgb_to_565(self, r: int, g: int, b: int) -> int:
+        """
+        Convert 24-bit RGB color to 16-bit RGB565 format.
+
+        Args:
+            r (int): Red component (0-255).
+            g (int): Green component (0-255).
+            b (int): Blue component (0-255).
+
+        Returns:
+            int: Color in RGB565 format.
+        """
         return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
 
-    def swap_buffers(self):
+    def swap_buffers(self) -> None:
         np.copyto(self.front_buffer, self.back_buffer)
 
     def __del__(self):
