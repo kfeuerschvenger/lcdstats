@@ -3,46 +3,52 @@ import time
 from views.screen import Screen
 
 class SecondaryScreen(Screen):
-    def __init__(self):
-        self.gif_path = "./resources/psyduck.gif"
-        
-        self.is_raspberry = False
-        self.screen_width = 0
-        self.screen_height = 0
-        
-        self.target_width = 128
-        self.target_height = 128
+    # Constants
+    DEFAULT_GIF_PATH = "./resources/psyduck.gif"
+    DEFAULT_FRAME_DURATION_MS = 100
+    MILLISECONDS_IN_SECOND = 1000
+    RESIZE_METHOD = Image.NEAREST
+
+    def __init__(self, is_raspberry: bool, screen_width: int, screen_height: int):
+        super().__init__(is_raspberry, screen_width, screen_height)
+
+        self.gif_path = self.DEFAULT_GIF_PATH
+
         self.frames = []
         self.durations = []
         self.current_frame_index = 0
         self.prev_frame_index = 0
         self.last_frame_time = time.time()
-        self.screen_width = 128
-        self.screen_height = 128
-
-        self.frame_duration = 0.1 # 100ms per frame
-        self.target_fps = 10      # For GIFs with variable timing
+        self.draw_position = (0, 0)  # Will be computed after loading the first frame
 
         self.load_gif()
 
     def load_gif(self):
         gif = Image.open(self.gif_path)
+
         try:
             while True:
                 frame = gif.copy().convert("RGB")
-                resized_frame = frame.resize((self.target_width, self.target_height), Image.NEAREST)
+                resized_frame = frame.resize(
+                    (self.screen_width, self.screen_height),
+                    self.RESIZE_METHOD
+                )
                 self.frames.append(resized_frame)
-                self.durations.append(gif.info.get('duration', 100) / 1000.0) # in seconds
+                duration_ms = gif.info.get('duration', self.DEFAULT_FRAME_DURATION_MS)
+                duration_s = duration_ms / self.MILLISECONDS_IN_SECOND
+                self.durations.append(duration_s)
                 gif.seek(gif.tell() + 1)
         except EOFError:
-            pass  # gif end
+            pass  # end of GIF
 
-    def init(self, is_raspberry, screen_width, screen_height):
-        self.is_raspberry = is_raspberry
-        self.screen_width = screen_width
-        self.screen_height = screen_height
+        if self.frames:
+            frame_width, frame_height = self.frames[0].size
+            self.draw_position = (
+                (self.screen_width - frame_width) // 2,
+                (self.screen_height - frame_height) // 2
+            )
 
-    def update(self, delta_time):
+    def update(self, delta: float):
         current_time = time.time()
         frame_duration = self.durations[self.current_frame_index]
 
@@ -55,8 +61,7 @@ class SecondaryScreen(Screen):
         frame = self.frames[self.current_frame_index]
         prev_frame = self.frames[self.prev_frame_index]
 
-        x = (self.screen_width - self.target_width) // 2
-        y = (self.screen_height - self.target_height) // 2
+        x, y = self.draw_position
 
         image.paste(prev_frame, (x, y), prev_frame.convert("L"))
         image.paste(frame, (x, y))
