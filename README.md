@@ -40,9 +40,7 @@ lcdstats/
 ├── resources/                 # Graphical assets (icons, sprites, GIFs)
 ├── tests/                     # Validation and QA tests
 │   ├── resources/             # Test-specific assets
-│   ├── grid_test.py           # Layout positioning validation
-│   ├── image_test.py          # Pillow image rendering tests
-│   └── sanity_check.py        # Color depth and GPIO sanity checks
+│   └── test_suite.py          # Runs multiple tests via an interactive CLI interface
 ├── views/                     # UI Screen implementations
 │   ├── screen.py              # Abstract Screen base class
 │   ├── main_screen.py         # Primary system metrics display
@@ -129,4 +127,12 @@ pip install -r requirements-windows.txt
 ```
 source stats_env/bin/activate
 python3 stats.py
+```
+
+## Run tests
+
+```
+python test_suite.py           # Interactive menu
+python test_suite.py all       # Run all tests
+python test_suite.py image     # Run a specific test
 ```
