@@ -80,13 +80,14 @@ tkinter==0.1.0      # GUI framework
 
 |        Pin        | Physical Pin |  Raspberry Pi  | Function            |
 | :---------------: | :----------: | :------------: | :------------------ |
-|        VCC        |    Pin 1     |   3.3V Power   | Power supply        |
+|        VCC        |    Pin 1     |   3.3V Power   | Power supply (main) |
 |        GND        |    Pin 6     |     Ground     | Common ground       |
 |        SCL        |    Pin 23    | GPIO 11 (SCLK) | Clock SPI           |
 |        SDA        |    Pin 19    | GPIO 10 (MOSI) | Data SPI            |
 |    RES (Reset)    |    Pin 22    |    GPIO 25     | Display Reset       |
 | DC (Data/Command) |    Pin 18    |    GPIO 24     | Data/Command Select |
 |        CS         |    Pin 29    |     GPIO 5     | Chip Select         |
+|        LED        |    Pin 17    |   3.3V Power   | Backlight Power     |
 |   Button Signal   |    Pin 12    |    GPIO 18     | Button input        |
 |   Button Ground   |    Pin 9     |     Ground     | Button return path  |
 

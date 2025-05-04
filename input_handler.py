@@ -8,6 +8,7 @@ class InputHandler:
         self.is_raspberry = is_raspberry
         self._short_press_detected = False
         self._long_press_detected = False
+        self._long_press_handled = False
         self._pressed_time = None
         self._is_pressed = False
         self._gpio_button = None
@@ -41,8 +42,10 @@ class InputHandler:
             if not button_state:  # Button pressed (active low)
                 if self._pressed_time is None:
                     self._pressed_time = time.time()
-                elif time.time() - self._pressed_time >= self.LONG_PRESS_THRESHOLD:
+                    self._long_press_handled = False
+                elif not self._long_press_handled and time.time() - self._pressed_time >= self.LONG_PRESS_THRESHOLD:
                     self._long_press_detected = True
+                    self._long_press_handled = True
             elif self._pressed_time is not None:
                 self._handle_press_release()
                 self._pressed_time = None
@@ -50,9 +53,12 @@ class InputHandler:
     def _handle_press_release(self):
         press_duration = time.time() - self._pressed_time
         if press_duration >= self.LONG_PRESS_THRESHOLD:
-            self._long_press_detected = True
+            if not self._long_press_handled:
+                self._long_press_detected = True
+                self._long_press_handled = True
         else:
-            self._short_press_detected = True
+            if not self._long_press_handled:
+                self._short_press_detected = True
 
     def was_button_pressed(self):
         was_pressed = self._short_press_detected
