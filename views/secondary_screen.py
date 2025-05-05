@@ -1,5 +1,6 @@
-from PIL import Image
+from PIL import Image, ImageDraw
 import time
+
 from views.screen import Screen
 
 class SecondaryScreen(Screen):
@@ -10,6 +11,7 @@ class SecondaryScreen(Screen):
     RESIZE_METHOD = Image.NEAREST
 
     def __init__(self, is_raspberry: bool, screen_width: int, screen_height: int):
+        """Initialize the SecondaryScreen with the given parameters."""
         super().__init__(is_raspberry, screen_width, screen_height)
 
         self.gif_path = self.DEFAULT_GIF_PATH
@@ -23,12 +25,13 @@ class SecondaryScreen(Screen):
 
         self.load_gif()
 
-    def load_gif(self):
+    def load_gif(self) -> None:
+        """Load the GIF file and prepare the frames."""
         gif = Image.open(self.gif_path)
-
+        
         try:
             while True:
-                frame = gif.copy().convert("RGB")
+                frame = gif.copy().convert("RGBA")
                 resized_frame = frame.resize(
                     (self.screen_width, self.screen_height),
                     self.RESIZE_METHOD
@@ -48,7 +51,8 @@ class SecondaryScreen(Screen):
                 (self.screen_height - frame_height) // 2
             )
 
-    def update(self, delta: float):
+    def update(self, delta: float) -> None:
+        """Update the screen with the given delta time."""
         current_time = time.time()
         frame_duration = self.durations[self.current_frame_index]
 
@@ -57,7 +61,8 @@ class SecondaryScreen(Screen):
             self.current_frame_index = (self.current_frame_index + 1) % len(self.frames)
             self.last_frame_time = current_time
 
-    def draw(self, draw, image):
+    def draw(self, draw: ImageDraw.ImageDraw, image: Image.Image) -> None:
+        """Draw the secondary screen with the current GIF frame."""
         frame = self.frames[self.current_frame_index]
         prev_frame = self.frames[self.prev_frame_index]
 

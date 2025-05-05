@@ -1,7 +1,7 @@
-import subprocess
-import random
-import time
 from datetime import datetime, timezone
+import random
+import subprocess
+import time
 
 class DataGatherer:
     """Gathers system and network metrics, with simulated fallbacks for non-Raspberry environments."""
@@ -25,7 +25,8 @@ class DataGatherer:
         )
     RAM_USAGE_CMD = "free | awk '/Mem:/ {printf \"%.1f%%\\n\", ($3/$2)*100}'"
 
-    def __init__(self, is_raspberry: bool = True):
+    def __init__(self, is_raspberry: bool = True) -> None:
+        """Initialize the DataGatherer with a flag indicating if it's running on a Raspberry Pi."""
         self.is_raspberry = is_raspberry
 
         # Caches for infrequently-changing values
@@ -108,14 +109,16 @@ class DataGatherer:
         """Remove a suffix and convert to float."""
         return float(text.replace(suffix, '').strip())
 
-    def get_cpu_usage_value(self) -> float:
-        return self._strip_suffix(self.get_cpu_usage(), '%')
-
-    def get_mem_usage_value(self) -> float:
-        return self._strip_suffix(self.get_mem_usage(), '%')
-
-    def get_disk_usage_value(self) -> float:
-        return self._strip_suffix(self.get_disk_usage(), '%')
-
-    def get_temperature_value(self) -> float:
-        return self._strip_suffix(self.get_temperature(), '°C')
+    def get_metric_value(self, key: str) -> float:
+        """Return the numeric value of a metric based on its key."""
+        key = key.lower()
+        if key == 'cpu':
+            return self._strip_suffix(self.get_cpu_usage(), '%') // 100.0
+        elif key == 'mem':
+            return self._strip_suffix(self.get_mem_usage(), '%') // 100.0
+        elif key == 'disk':
+            return self._strip_suffix(self.get_disk_usage(), '%') // 100.0
+        elif key == 'temp':
+            return self._strip_suffix(self.get_temperature(), '°C')
+        else:
+            return 0.0

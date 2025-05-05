@@ -1,15 +1,16 @@
 import tkinter as tk
 from PIL import ImageTk, Image
 
+from devices.device import Device
+
 # Constants
 SCALE_FACTOR = 2  # Scale the canvas for better visibility in simulation
 BACKGROUND_COLOR = "#FFFFFF"  # Background color of the canvas
 CLEAR_COLOR = (0, 0, 0)  # RGB color used when clearing the screen
 
-class FakeDisplay:
+class FakeDisplay(Device):
     def __init__(self, width: int, height: int, root: tk.Tk):
-        self.width = width
-        self.height = height
+        super().__init__(width, height)
         self.root = root
         self.closed = False
         self.root.title("Fake LCD Display")
@@ -24,12 +25,13 @@ class FakeDisplay:
         )
         self.canvas.pack()
         self.tk_image = None
+        self.alpha_bg = Image.new("RGBA", (width, height), (0, 0, 0, 0))
 
     def display(self, image: Image.Image):
         """Display the given PIL image on the canvas."""
         if self.closed:
             return
-        
+
         try:
             if not self.root.winfo_exists():
                 self.closed = True
@@ -37,16 +39,18 @@ class FakeDisplay:
         except tk.TclError:
             self.closed = True
             return
-        
-        rgb_image = image.convert("RGB")
+
         try:
-            self.tk_image = ImageTk.PhotoImage(rgb_image, master=self.root)
-            self.canvas.create_image(
-                self.width // 2,
-                self.height // 2,
-                anchor=tk.NW,
-                image=self.tk_image
-            )
+            if image.mode != 'RGBA':
+                image = image.convert('RGBA')
+
+            composite = Image.alpha_composite(self.alpha_bg, image)
+            rgb_image = composite.convert("RGB")
+
+            scaled_image = rgb_image.resize((self.width, self.height), Image.NEAREST)
+
+            self.tk_image = ImageTk.PhotoImage(scaled_image)
+            self.canvas.create_image(self.width // 2, self.height // 2, anchor=tk.NW, image=self.tk_image)
         except tk.TclError:
             self.closed = True
 
@@ -54,11 +58,11 @@ class FakeDisplay:
         """Clear the display by filling it with black."""
         if not self.closed:
             try:
-                self.display(Image.new("RGB", (self.width, self.height), CLEAR_COLOR))
+                self.display(Image.new('RGBA', (self.width, self.height), (0, 0, 0, 0)))
             except tk.TclError:
                 self.closed = True
 
-    def update(self):
+    def update(self) -> None:
         """Update the Tkinter event loop."""
         if self.closed:
             return

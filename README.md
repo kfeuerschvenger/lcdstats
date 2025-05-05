@@ -36,18 +36,22 @@ The project is divided into several classes and modules to maintain code modular
 
 ```
 lcdstats/
+├── devices/
+│   ├── device.py              # Interface for devices that can display images
+│   ├── fake_display.py        # Tkinter-based display simulator
+│   └── ILI9163.py             # ILI9163 LCD controller driver
 ├── fonts/                     # Custom fonts for display
 ├── resources/                 # Graphical assets (icons, sprites, GIFs)
 ├── tests/                     # Validation and QA tests
 │   ├── resources/             # Test-specific assets
 │   └── test_suite.py          # Runs multiple tests via an interactive CLI interface
+├── utils/                     # Helper classes
+│   └── progress_indicator.py  # A class to draw a circular progress indicator
 ├── views/                     # UI Screen implementations
 │   ├── screen.py              # Abstract Screen base class
 │   ├── main_screen.py         # Primary system metrics display
 │   └── secondary_screen.py    # Secondary media/animation display
 ├── data_gatherer.py           # System metrics collection module
-├── fake_display.py            # Tkinter-based display simulator
-├── ILI9163.py                 # ILI9163 LCD controller driver
 ├── input_handler.py           # GPIO/Tkinter input processor
 ├── screen_manager.py          # Screen state controller
 └── stats.py                   # Main application entry point
@@ -105,7 +109,7 @@ sudo apt update && sudo apt install -y \
   python3-spidev
 
 # 2. Create and activate virtual environment
-python3 -m venv stats_env
+python -m venv stats_env
 source stats_env/bin/activate
 
 # 3. Install Python packages
@@ -127,13 +131,26 @@ pip install -r requirements-windows.txt
 
 ```
 source stats_env/bin/activate
-python3 stats.py
+python stats.py
 ```
 
 ## Run tests
 
 ```
-python test_suite.py           # Interactive menu
-python test_suite.py all       # Run all tests
-python test_suite.py image     # Run a specific test
+python -m lcdstats.tests.test_suite           # Interactive menu
+python -m lcdstats.tests.test_suite all       # Run all tests
+python -m lcdstats.tests.test_suite image     # Run a specific test
 ```
+
+## Future Improvements
+
+- Backlight Control via GPIO: Move the LED pin to a GPIO pin to allow turning the screen on/off programmatically for better standby behavior and energy savings.
+- Configurable Timeout & Schedule: Add a settings screen to configure auto-off times (e.g., 5, 30, 60 minutes) or set specific active hours for the display.
+- Brightness & Themes: Support for brightness adjustment and UI themes with different color palettes.
+- Animated Screen Transitions: Add smooth animations when switching between screens to enhance user experience.
+
+## Credits & What's Coming
+
+This project was inspired by [mklements/OLED_Stats](https://github.com/mklements/OLED_Stats) — a great starting point for displaying system info on tiny screens. Big thanks for the spark!
+I'll be uploading photos of the panel running on the Raspberry Pi soon, so you can see it in action.
+Also, I designed a custom 3D-printed case for the display to keep things neat on the desk. The STL files will be shared for free on Thingiverse as soon as they're ready.

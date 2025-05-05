@@ -1,8 +1,10 @@
-import time
-from periphery import GPIO
-import spidev
 import numpy as np
+from periphery import GPIO
 from PIL import Image
+import spidev
+import time
+
+from devices.device import Device
 
 # GPIO chip path
 GPIO_CHIP_PATH = "/dev/gpiochip0"
@@ -50,7 +52,7 @@ ROTATION_MADCTL = {
     270: 0x68   # MY | MV | BGR
 }
 
-class ILI9163:
+class ILI9163(Device):
     def __init__(self, spi_bus: int = 0, spi_device: int = 0, dc_pin: int = 25, rst_pin: int = 24, cs_pin: int = 5,
                  width: int = DEFAULT_WIDTH, height: int = DEFAULT_HEIGHT, rotation: int = 180):
         """
@@ -66,8 +68,7 @@ class ILI9163:
             height (int): Display height in pixels.
             rotation (int): Display rotation in degrees (0, 90, 180, 270).
         """
-        self.width = width
-        self.height = height
+        super().__init__(width, height)
 
         self.rotation = int(rotation) % 360
         if int(self.rotation) not in ROTATION_MADCTL:
@@ -104,7 +105,7 @@ class ILI9163:
     def _write(self, data, is_command=True):
         """
         Send a command or data to the display over SPI.
-        
+
         Args:
             data (list[int]): Bytes to send.
             is_command (bool): True to send a command, False to send data.
@@ -146,7 +147,7 @@ class ILI9163:
     def _pack_coords(self, start, end):
         """
         Convert start and end coordinates into a 4-byte list for commands.
-        
+
         Returns:
             list[int]: High and low bytes of start and end.
         """
@@ -194,6 +195,10 @@ class ILI9163:
         Args:
             image (PIL.Image.Image): Input image to display.
         """
+        if image.mode == 'RGBA':
+            bg = Image.new("RGBA", image.size, (0, 0, 0, 255))
+            image = Image.alpha_composite(bg, image)
+        
         img = image.convert('RGB').resize((self.width, self.height))
         arr = np.array(img, dtype=np.uint16)
         r = (arr[:, :, 0] & 0xF8) << 8
