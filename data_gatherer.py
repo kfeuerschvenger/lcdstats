@@ -113,11 +113,11 @@ class DataGatherer:
         """Return the numeric value of a metric based on its key."""
         key = key.lower()
         if key == 'cpu':
-            return self._strip_suffix(self.get_cpu_usage(), '%') // 100.0
+            return self._strip_suffix(self.get_cpu_usage(), '%') / 100.0
         elif key == 'mem':
-            return self._strip_suffix(self.get_mem_usage(), '%') // 100.0
+            return self._strip_suffix(self.get_mem_usage(), '%') / 100.0
         elif key == 'disk':
-            return self._strip_suffix(self.get_disk_usage(), '%') // 100.0
+            return self._strip_suffix(self.get_disk_usage(), '%') / 100.0
         elif key == 'temp':
             return self._strip_suffix(self.get_temperature(), '°C')
         else:
