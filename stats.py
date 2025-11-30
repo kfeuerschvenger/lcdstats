@@ -32,7 +32,7 @@ def setup_device(input_handler_instance: InputHandler, screen_manager_instance: 
     """Set up the display device based on the environment."""
     if display_type == "auto":
         display_type = "raspberry" if IS_RASPBERRY else "window"
-    
+
     if display_type == "raspberry":
         from devices.ILI9163 import ILI9163
         return ILI9163()
@@ -46,21 +46,21 @@ def setup_device(input_handler_instance: InputHandler, screen_manager_instance: 
         from devices.esp32_wifi_display import ESP32WiFiDisplay
         if not esp32_host:
             raise ValueError("ESP32 host address required for ESP32 display mode")
-        
+
         device = ESP32WiFiDisplay(esp32_host, width=SCREEN_WIDTH, height=SCREEN_HEIGHT)
-        
+
         # Setup callbacks
         def on_request_next(last_screen: str):
             print(f"ESP32 requested next screen after: {last_screen}")
             screen_manager_instance.handle_button_press()
-        
+
         def on_request_stop():
             print("ESP32 requested stop sending")
             # Could implement stop logic here if needed
-        
+
         device.on_request_next_screen = on_request_next
         device.on_request_stop_sending = on_request_stop
-        
+
         return device
     else:
         raise ValueError(f"Unsupported display type: {display_type}")
@@ -108,12 +108,12 @@ def main_loop(device: Device, screen_manager: ScreenManager, display_type: str) 
 def main() -> None:
     """Main entry point for the application."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description='LCD Stats Display')
-    parser.add_argument('--display', type=str, default='auto', 
+    parser.add_argument('--display', type=str, default='auto',
                        choices=['auto', 'raspberry', 'window', 'esp32'],
                        help='Display type to use')
-    parser.add_argument('--esp32-host', type=str, 
+    parser.add_argument('--esp32-host', type=str,
                        help='ESP32 host IP address for WiFi display')
     args = parser.parse_args()
 
@@ -123,8 +123,12 @@ def main() -> None:
     if args.esp32_host:
         print(f"ESP32 host: {args.esp32_host}")
 
-    input_handler_instance = InputHandler(IS_RASPBERRY)
-    
+    # Determine if we need GPIO
+    # Only use GPIO for native raspberry LCD mode
+    use_gpio = (args.display == 'raspberry' or (args.display == 'auto' and IS_RASPBERRY))
+
+    input_handler_instance = InputHandler(IS_RASPBERRY, use_gpio=use_gpio)
+
     screens: list[Screen] = [
         MainScreen(IS_RASPBERRY, SCREEN_WIDTH, SCREEN_HEIGHT),
         SecondaryScreen(IS_RASPBERRY, SCREEN_WIDTH, SCREEN_HEIGHT)

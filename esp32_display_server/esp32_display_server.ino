@@ -101,8 +101,18 @@ void handleIdleState() {
 }
 
 void handleDisconnectedState() {
+  static unsigned long lastScreenUpdate = 0;
+  const unsigned long SCREEN_UPDATE_INTERVAL = 60000; // Update every 60 seconds
+
   // Update network to listen for clients
   network.update();
+
+  // Periodically refresh the disconnected screen to update uptime
+  unsigned long now = millis();
+  if (now - lastScreenUpdate >= SCREEN_UPDATE_INTERVAL) {
+    showDisconnectedScreen();
+    lastScreenUpdate = now;
+  }
 
   // Handle short press (no action in disconnected state)
   if (input.wasShortPress()) {
