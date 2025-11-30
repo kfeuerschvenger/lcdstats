@@ -1,0 +1,38 @@
+services:
+  lcdstats:
+    build: .
+    container_name: lcdstats
+    restart: unless-stopped
+    
+    # Use host network for easy ESP32 communication
+    network_mode: host
+    
+    # OPTION 1: Privileged mode with bind mounts (REAL METRICS)
+    # Uncomment these lines to access host system metrics:
+    # privileged: true
+    # volumes:
+    #   - /sys:/sys:ro
+    #   - /proc:/proc:ro
+    #   - /etc/os-release:/etc/os-release:ro
+    
+    environment:
+      # Display mode: 'window', 'esp32', or 'raspberry'
+      DISPLAY_MODE: esp32
+      
+      # ESP32 IP address (CHANGE THIS to your ESP32's IP)
+      ESP32_HOST: 192.168.0.199
+      
+      # Set to 'true' to use real Raspberry Pi metrics
+      # Only works with privileged mode enabled above
+      IS_RASPBERRY: "false"
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# OPTION 2: Alternative with simulated metrics (SAFER, NO PRIVILEGES)
+# This is the default configuration - runs with simulated data
+# Good for testing ESP32 display without system access
