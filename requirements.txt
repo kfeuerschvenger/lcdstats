@@ -1,4 +1,4 @@
 Pillow==10.3.0
 numpy==1.26.4
-periphery==2.1.1
+python-periphery==2.4.1
 spidev==3.6

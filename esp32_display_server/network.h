@@ -19,6 +19,12 @@ private:
   String localIP;
   bool handshakeSent;
   String lastScreenId;
+  
+  // Connection health tracking
+  unsigned long lastClientCheck;
+  int consecutiveErrors;
+  
+  void handleClientDisconnect();
 
 public:
   NetworkManager();
@@ -41,7 +47,7 @@ public:
 
 private:
   void setupWiFi();
-  void handleClient();
+  bool handleClient();
   bool readJsonHeader(DynamicJsonDocument& doc);
   bool readBinaryPayload(uint8_t* buffer, uint32_t length);
 };

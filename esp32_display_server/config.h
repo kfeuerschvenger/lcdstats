@@ -26,40 +26,52 @@
 #define SPI_FREQUENCY 30000000
 #define SPI_MODE SPI_MODE3
 
+// ============================================================================
+// NETWORK SETTINGS - CHANGE THESE!
+// ============================================================================
+
 // Network settings
-#define WIFI_SSID "YourNetworkName"
-#define WIFI_PASSWORD "YourPassword"
+#define WIFI_SSID "YourNetworkName"      // CHANGE THIS
+#define WIFI_PASSWORD "YourPassword"     // CHANGE THIS (plain text, not PSK hash)
 #define SERVER_PORT 8080
 
-// Static IP configuration
-#define STATIC_IP_ENABLED true
-#define STATIC_IP_0 192
-#define STATIC_IP_1 168
-#define STATIC_IP_2 0
-#define STATIC_IP_3 199
-#define GATEWAY_IP_0 192
+// Static IP configuration (recommended for stability)
+#define STATIC_IP_ENABLED true           // Set to false to use DHCP
+
+// If using static IP, configure these:
+#define STATIC_IP_0 192                  // First octet
+#define STATIC_IP_1 168                  // Second octet
+#define STATIC_IP_2 0                    // Third octet
+#define STATIC_IP_3 199                  // Fourth octet (e.g., 192.168.0.199)
+
+#define GATEWAY_IP_0 192                 // Your router IP
 #define GATEWAY_IP_1 168
 #define GATEWAY_IP_2 0
-#define GATEWAY_IP_3 1
+#define GATEWAY_IP_3 1                   // Usually .1 or .254
+
 #define SUBNET_0 255
 #define SUBNET_1 255
 #define SUBNET_2 255
 #define SUBNET_3 0
-#define PRIMARY_DNS_0 192
+
+#define PRIMARY_DNS_0 192                // Primary DNS (router or 1.1.1.1)
 #define PRIMARY_DNS_1 168
 #define PRIMARY_DNS_2 0
 #define PRIMARY_DNS_3 1
-#define SECONDARY_DNS_0 8
+
+#define SECONDARY_DNS_0 8                // Secondary DNS (Google DNS)
 #define SECONDARY_DNS_1 8
 #define SECONDARY_DNS_2 8
 #define SECONDARY_DNS_3 8
 
+// ============================================================================
+// TIMING & PROTOCOL SETTINGS (usually don't need to change)
+// ============================================================================
+
 // Timing constants
-#define LONG_PRESS_THRESHOLD 3000      // 3 seconds
+#define LONG_PRESS_THRESHOLD 3000       // 3 seconds for long press
 #define CONNECTION_TIMEOUT 30000        // 30 seconds without data = disconnected
 #define DISCONNECTED_TIMEOUT 180000     // 3 minutes in disconnected = idle
-
-// Protocol constants
 #define EXPECTED_PAYLOAD_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT * 2)
 
 // Response codes

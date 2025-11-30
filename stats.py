@@ -3,7 +3,6 @@ import time
 from PIL import Image, ImageDraw
 
 from devices.device import Device
-from devices.fake_display import FakeDisplay
 from screen_manager import ScreenManager
 from views.screen import Screen
 from views.main_screen import MainScreen
@@ -39,6 +38,7 @@ def setup_device(input_handler_instance: InputHandler, screen_manager_instance: 
         return ILI9163()
     elif display_type == "window":
         import tkinter as tk
+        from devices.fake_display import FakeDisplay
         root = tk.Tk()
         input_handler_instance.register_keybinding(root)
         return FakeDisplay(SCREEN_WIDTH, SCREEN_HEIGHT, root)
@@ -101,7 +101,7 @@ def main_loop(device: Device, screen_manager: ScreenManager, display_type: str) 
         else:
             device.display(frame)
 
-        if not IS_RASPBERRY:
+        if not IS_RASPBERRY or display_type == "window":
             device.update()
 
 # --- Entry Point ---
@@ -117,6 +117,12 @@ def main() -> None:
                        help='ESP32 host IP address for WiFi display')
     args = parser.parse_args()
 
+    print(f"Starting LCD Stats Display")
+    print(f"Display mode: {args.display}")
+    print(f"Is Raspberry: {IS_RASPBERRY}")
+    if args.esp32_host:
+        print(f"ESP32 host: {args.esp32_host}")
+
     input_handler_instance = InputHandler(IS_RASPBERRY)
     
     screens: list[Screen] = [
@@ -129,9 +135,14 @@ def main() -> None:
     device = None
     try:
         device = setup_device(input_handler_instance, screen_manager, args.display, args.esp32_host)
+        print(f"Device setup complete. Starting main loop...")
         main_loop(device, screen_manager, args.display)
     except KeyboardInterrupt:
-        pass
+        print("\nShutting down...")
+    except Exception as e:
+        print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         if device:
             device.clear()

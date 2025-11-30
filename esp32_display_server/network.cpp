@@ -1,4 +1,4 @@
-// network.cpp - Refactored protocol implementation
+// Network and WiFi management implementation
 // ============================================================================
 
 #include "network.h"
@@ -11,6 +11,8 @@ NetworkManager::NetworkManager() {
   onDisplayData = nullptr;
   onConnectionChange = nullptr;
   lastScreenId = "";
+  lastClientCheck = 0;
+  consecutiveErrors = 0;
 }
 
 NetworkManager::~NetworkManager() {
@@ -24,6 +26,7 @@ NetworkManager::~NetworkManager() {
 
 void NetworkManager::setupWiFi() {
   WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);  // Enable auto-reconnect
   
 #ifdef STATIC_IP_ENABLED
   IPAddress staticIP(STATIC_IP_0, STATIC_IP_1, STATIC_IP_2, STATIC_IP_3);
@@ -52,6 +55,9 @@ void NetworkManager::setupWiFi() {
     Serial.println("\nWiFi Connected!");
     Serial.print("IP Address: ");
     Serial.println(localIP);
+    Serial.print("Signal Strength: ");
+    Serial.print(WiFi.RSSI());
+    Serial.println(" dBm");
   } else {
     Serial.println("\nWiFi connection failed!");
   }
@@ -63,32 +69,51 @@ void NetworkManager::begin() {
   if (WiFi.status() == WL_CONNECTED) {
     server = new WiFiServer(SERVER_PORT);
     server->begin();
+    server->setNoDelay(true);  // Disable Nagle's algorithm for lower latency
     Serial.println("Server started on port " + String(SERVER_PORT));
   }
 }
 
 void NetworkManager::update() {
-  if (WiFi.status() != WL_CONNECTED) return;
+  // Check WiFi connection
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi disconnected, attempting reconnect...");
+    setupWiFi();
+    return;
+  }
+  
+  unsigned long now = millis();
+  
+  // Periodic client health check (every 5 seconds)
+  if (client && (now - lastClientCheck > 5000)) {
+    lastClientCheck = now;
+    
+    if (!client->connected()) {
+      Serial.println("Client health check failed");
+      handleClientDisconnect();
+      return;
+    }
+  }
   
   // Check for new client
   if (!client || !client->connected()) {
     if (client) {
-      bool wasConnected = handshakeSent;
-      delete client;
-      client = nullptr;
-      handshakeSent = false;
-      
-      if (wasConnected && onConnectionChange) {
-        onConnectionChange(false);
-      }
+      handleClientDisconnect();
     }
     
     WiFiClient newClient = server->available();
     if (newClient) {
       client = new WiFiClient(newClient);
+      client->setNoDelay(true);  // Disable Nagle's algorithm
+      
       Serial.println("New client connected");
+      Serial.print("Client IP: ");
+      Serial.println(client->remoteIP());
+      
       sendHandshake();
       handshakeSent = true;
+      consecutiveErrors = 0;
+      lastClientCheck = millis();
       
       if (onConnectionChange) {
         onConnectionChange(true);
@@ -98,21 +123,37 @@ void NetworkManager::update() {
   
   // Handle client data
   if (client && client->available()) {
-    handleClient();
+    if (!handleClient()) {
+      consecutiveErrors++;
+      if (consecutiveErrors >= 3) {
+        Serial.println("Too many consecutive errors, disconnecting client");
+        handleClientDisconnect();
+      }
+    } else {
+      consecutiveErrors = 0;
+    }
   }
 }
 
-void NetworkManager::disconnect() {
+void NetworkManager::handleClientDisconnect() {
+  bool wasConnected = handshakeSent;
+  
   if (client) {
     client->stop();
     delete client;
     client = nullptr;
-    handshakeSent = false;
-    
-    if (onConnectionChange) {
-      onConnectionChange(false);
-    }
   }
+  
+  handshakeSent = false;
+  consecutiveErrors = 0;
+  
+  if (wasConnected && onConnectionChange) {
+    onConnectionChange(false);
+  }
+}
+
+void NetworkManager::disconnect() {
+  handleClientDisconnect();
 }
 
 bool NetworkManager::hasClient() const {
@@ -120,6 +161,8 @@ bool NetworkManager::hasClient() const {
 }
 
 void NetworkManager::sendHandshake() {
+  if (!client) return;
+  
   DynamicJsonDocument doc(256);
   doc["status"] = "ready";
   doc["code"] = CODE_OK;
@@ -131,6 +174,7 @@ void NetworkManager::sendHandshake() {
   String output;
   serializeJson(doc, output);
   client->println(output);
+  client->flush();  // Ensure data is sent immediately
   Serial.println("Handshake sent: " + output);
 }
 
@@ -146,6 +190,7 @@ void NetworkManager::sendResponse(const char* status, int code, const char* mess
   String output;
   serializeJson(doc, output);
   client->println(output);
+  client->flush();
   Serial.println("Response: " + output);
 }
 
@@ -159,6 +204,7 @@ void NetworkManager::sendCommand(const char* command, const char* extra) {
   String output;
   serializeJson(doc, output);
   client->println(output);
+  client->flush();
   Serial.println("Command sent: " + output);
 }
 
@@ -188,10 +234,14 @@ bool NetworkManager::readBinaryPayload(uint8_t* buffer, uint32_t length) {
   
   uint32_t bytesRead = 0;
   unsigned long startTime = millis();
+  const unsigned long PAYLOAD_TIMEOUT = 5000;  // 5 second timeout
   
   while (bytesRead < length) {
-    if (millis() - startTime > 5000) {  // 5 second timeout
-      Serial.println("Timeout reading payload");
+    if (millis() - startTime > PAYLOAD_TIMEOUT) {
+      Serial.print("Timeout reading payload: ");
+      Serial.print(bytesRead);
+      Serial.print("/");
+      Serial.println(length);
       return false;
     }
     
@@ -213,16 +263,16 @@ bool NetworkManager::readBinaryPayload(uint8_t* buffer, uint32_t length) {
   return bytesRead == length;
 }
 
-void NetworkManager::handleClient() {
-  if (!client) return;
+bool NetworkManager::handleClient() {
+  if (!client) return false;
   
   DynamicJsonDocument doc(1024);
-  if (!readJsonHeader(doc)) return;
+  if (!readJsonHeader(doc)) return false;
   
   const char* command = doc["command"];
   if (!command) {
     sendResponse("error", CODE_BAD_FORMAT, "Missing command field");
-    return;
+    return false;
   }
   
   if (strcmp(command, "DISPLAY") == 0) {
@@ -231,12 +281,12 @@ void NetworkManager::handleClient() {
     
     if (length != EXPECTED_PAYLOAD_SIZE) {
       sendResponse("error", CODE_BAD_FORMAT, "Invalid payload length");
-      return;
+      return false;
     }
     
     if (!screenId) {
       sendResponse("error", CODE_BAD_FORMAT, "Missing screen_id");
-      return;
+      return false;
     }
     
     // Send ready response
@@ -249,7 +299,7 @@ void NetworkManager::handleClient() {
     if (!success) {
       delete[] payloadBuffer;
       sendResponse("error", CODE_FRAGMENT_MISSING, "Incomplete payload");
-      return;
+      return false;
     }
     
     // Convert to RGB565 and call callback
@@ -261,8 +311,10 @@ void NetworkManager::handleClient() {
     
     delete[] payloadBuffer;
     sendResponse("ok", CODE_OK, "displayed", screenId);
+    return true;
     
   } else {
     sendResponse("error", CODE_BAD_FORMAT, "Unknown command");
+    return false;
   }
 }

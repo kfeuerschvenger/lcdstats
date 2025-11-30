@@ -20,18 +20,23 @@ private:
   unsigned long lastActivityTime;
   String lastScreenId;
 
+  void printState(DeviceState state);
+
 public:
   StateManager();
-  
+
   void begin();
   void update();
-  
+
   DeviceState getState() const { return currentState; }
   void setState(DeviceState newState);
-  
+
   void markActivity();
   bool shouldTransitionToIdle() const;
-  
+
+  unsigned long getTimeSinceLastActivity() const;
+  unsigned long getTimeInCurrentState() const;
+
   void setLastScreen(const String& screenId) { lastScreenId = screenId; }
   String getLastScreen() const { return lastScreenId; }
 };
