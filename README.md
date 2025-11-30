@@ -8,6 +8,10 @@ A multi-mode system monitor for Raspberry Pi with support for:
 - **ESP32 WiFi display** (remote wireless screen)
 - **Windows simulation** (Tkinter GUI for development)
 
+**STL files and photos for the 3D-printed enclosure are available on Thingiverse:** https://www.thingiverse.com/thing:7218125
+
+---
+
 ## Motivation
 
 I recently got a Raspberry Pi 5 to set up my own home server. I'm hosting my website on it and have some exciting future projects lined up. I wanted a way to monitor system stats from my desk, so I developed this project to display important information like public IP, local IP, CPU temperature, memory usage, disk usage, and other metrics.
@@ -16,6 +20,18 @@ The app supports three display modes:
 - **Native LCD**: Direct connection to ILI9163 display on Raspberry Pi
 - **ESP32 WiFi**: Wireless streaming to an ESP32-C3 with LCD display
 - **Simulation**: Windows development mode with Tkinter window
+
+## 3D-Printed Enclosure (available as STL on Thingiverse)
+
+The project includes a custom 3D-printed enclosure designed by me to make the hardware compact, mountable and tidy. The enclosure package on Thingiverse contains all STL files and photos and is linked above. The enclosure consists of the following parts:
+
+- **Front frame** that holds the 128×128 SPI display securely.
+- **Two interchangeable back covers**: one sized for builds with an ESP32-C3 (with a USB-C cutout) and another designed for direct wiring to a Raspberry Pi (with a central hole to route cables to the Pi).
+- **Internal ESP32 insert**: a small internal piece that isolates the ESP32 from the display, organizes wiring, and secures the board inside the housing when using the ESP32 option.
+- **Clamp system** with matching threaded screw to attach the assembly to a monitor frame.
+- **Two arms and a support piece** that snap into the back cover; the arms use a smaller GoPro-style mount (custom-sized) so the screen angle is adjustable and compact.
+
+All STL files, print orientation suggestions and recommended print settings are published on Thingiverse. Use the Thingiverse page to download the ZIP of STL files and the included photos.
 
 ## Features
 
@@ -36,6 +52,14 @@ The app supports three display modes:
   - Screen Management System
   - Hardware Abstraction Layer
   - Input Handling Framework
+
+## Gallery
+
+> Photos and the full STL set are hosted on Thingiverse (link above).
+
+<img src="https://cdn.thingiverse.com/assets/64/71/57/a7/d0/Imagen_de_WhatsApp_2025-11-30_a_las_19.52.11_606d0086.jpg" alt="Mounted on monitor just chilling" width="400"/>
+<img src="https://cdn.thingiverse.com/assets/f3/40/92/27/14/Imagen_de_WhatsApp_2025-11-30_a_las_19.52.12_91d858ae.jpg" alt="Me holding it without support bracket" width="400"/>
+<img src="https://cdn.thingiverse.com/assets/f1/e4/e4/e2/ca/Imagen_de_WhatsApp_2025-11-30_a_las_19.52.12_b7621782.jpg" alt="Disconnected message, now it's in english but I'm too lazy to take another photo" width="400"/>
 
 ## Display Modes
 
@@ -139,13 +163,13 @@ tkinter==0.1.0      # GUI framework
 
 | Pin               | ESP32-C3 GPIO | Function            |
 |:-----------------:|:-------------:|:--------------------|
-| VCC	              |     3.3V      | Power supply        |
-| GND	              |     GND       | Common ground       |
-| CS	              |    GPIO 7     | Chip Select         |
-| RST	              |    GPIO 8     | Display Reset       |
-| RS	              |    GPIO 10    | Data/Command Select |
-| SDI	              |    GPIO 6     | SPI Data (MOSI)     |
-| CLK	              |    GPIO 4     | SPI Clock           |
+| VCC		      |     3.3V      | Power supply        |
+| GND		      |     GND       | Common ground       |
+| CS		      |    GPIO 7     | Chip Select         |
+| RST		      |    GPIO 8     | Display Reset       |
+| RS		      |    GPIO 10    | Data/Command Select |
+| SDI		      |    GPIO 6     | SPI Data (MOSI)     |
+| CLK		      |    GPIO 4     | SPI Clock           |
 | LED               |     3.3V      | Backlight Power     |
 |   Button Signal   |    GPIO 2     | Button input        |
 |   Button Ground   |     GND       | Button return path  |
@@ -384,12 +408,6 @@ python -m lcdstats.tests.test_suite image     # Run specific test
 - Verify volumes are mounted: `/sys:/sys:ro` and `/proc:/proc:ro`
 - Rebuild container: `docker-compose build --no-cache`
 
-**Problem**: "Could not find a version that satisfies the requirement periphery"  
-**Solution**:
-- This is expected - Docker uses `python-periphery` instead
-- Dockerfile is already configured correctly
-- If you see this error, rebuild: `docker-compose build --no-cache`
-
 ### Native LCD Issues
 
 **Problem**: "No module named 'periphery'"  
@@ -434,11 +452,7 @@ python -m lcdstats.tests.test_suite image     # Run specific test
 
 This project was inspired by [mklements/OLED_Stats](https://github.com/mklements/OLED_Stats) — a great starting point for displaying system info on tiny screens. Big thanks for the spark!
 
-### Coming Soon
-- Photos of the panel running on Raspberry Pi
-- Custom 3D-printed case STL files (free on Thingiverse)
-- ESP32 enclosure design for standalone wireless display
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
+
